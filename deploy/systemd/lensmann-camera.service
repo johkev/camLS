@@ -1,0 +1,17 @@
+[Unit]
+Description=Lansmann Camera signaling backend
+After=network.target
+
+[Service]
+Type=simple
+User=camls
+WorkingDirectory=/opt/lensmann-camera
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=CAMERA_PUBLIC_BASE_URL=https://cam.lensmann.studio
+ExecStart=/usr/bin/node /opt/lensmann-camera/backend/dist/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

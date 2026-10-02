@@ -1,0 +1,6 @@
+<resources>
+    <color name="lensmann_bg">#0f1513</color>
+    <color name="lensmann_surface">#1b2b27</color>
+    <color name="lensmann_accent">#bf996b</color>
+    <color name="lensmann_text">#f4f1eb</color>
+</resources>

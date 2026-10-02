@@ -1,0 +1,13 @@
+node_modules/
+.idea/
+.gradle/
+android/**/build/
+android/local.properties
+.env
+.env.*
+.DS_Store
+*.log
+*.tsbuildinfo
+frontend/dist/
+backend/dist/
+shared/dist/
