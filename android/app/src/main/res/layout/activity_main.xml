@@ -73,7 +73,7 @@
         android:hint="Backend-adresse"
         android:inputType="textUri"
         android:singleLine="true"
-        android:text="http://10.0.2.2:3001"
+        android:text="https://cam.lensmann.studio"
         android:textColor="#f4f1eb"
         android:textColorHint="#9ca7a1"
         android:visibility="gone" />

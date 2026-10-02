@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val backendUrl = binding.backendUrlInput.text.toString().trim().ifBlank {
-            "http://10.0.2.2:3001"
+            "https://cam.lensmann.studio"
         }
         val options = IO.Options().apply {
             transports = arrayOf("polling", "websocket")
