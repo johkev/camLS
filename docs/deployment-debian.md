@@ -87,7 +87,7 @@ paths and redirect port 80 to HTTPS.
 
 ## 7. 24 hour recordings
 
-The recording service creates ten-minute MP4 files in
+The recording service creates two-minute MP4 files in
 `/mnt/media2/Lænsmann Studio/cam`. The cleanup timer removes files older than 24
 hours. Install and start the services with:
 

@@ -8,7 +8,7 @@ Type=simple
 User=camls
 Environment=RECORDINGS_DIRECTORY=/mnt/media2/Lænsmann Studio/cam
 ExecStartPre=/usr/bin/mkdir -p "/mnt/media2/Lænsmann Studio/cam"
-ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel warning -rtsp_transport tcp -i rtsp://127.0.0.1:8554/server -map 0:v:0 -map 0:a:0? -c copy -f segment -segment_time 600 -segment_format mp4 -reset_timestamps 1 -strftime 1 "/mnt/media2/Lænsmann Studio/cam/camera-%%Y-%%m-%%d_%%H-%%M-%%S.mp4"
+ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel warning -rtsp_transport tcp -i rtsp://127.0.0.1:8554/server -map 0:v:0 -map 0:a:0? -c copy -f segment -segment_time 120 -segment_atclocktime 1 -segment_format mp4 -reset_timestamps 1 -strftime 1 "/mnt/media2/Lænsmann Studio/cam/%%d.%%m.%%Y kl %%H:%%M.mp4"
 Restart=always
 RestartSec=5
 KillMode=control-group
