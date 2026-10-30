@@ -58,7 +58,7 @@ The backend captures the server USB camera directly with FFmpeg at 1280x720,
 delivers the feed with WebRTC at `/live/server/whep`. The microphone defaults to
 the ALSA `default` device. If the webcam microphone is not the default device,
 run `arecord -l`, then set `SERVER_CAMERA_AUDIO_DEVICE` in the systemd service
-to the webcam's ALSA device (for example `hw:1,0`). Use `v4l2-ctl --list-devices`
+to the webcam's ALSA device (for example `plughw:1,0`). Use `v4l2-ctl --list-devices`
 to find another video device.
 
 ## 5. Apache
