@@ -51,7 +51,9 @@ class ServerCamera {
     if (inputFormat) args.push('-input_format', inputFormat);
     args.push('-i', process.env.SERVER_CAMERA_DEVICE ?? '/dev/video0');
     if (process.env.SERVER_CAMERA_AUDIO_ENABLED !== 'false') {
-      args.push('-thread_queue_size', '64', '-f', 'alsa', '-ac', '1', '-ar', '48000', '-i', process.env.SERVER_CAMERA_AUDIO_DEVICE ?? 'default');
+      // Let ALSA choose the webcam's native channel count and sample rate.
+      // Some USB microphones reject forced values even though capture works.
+      args.push('-thread_queue_size', '64', '-f', 'alsa', '-i', process.env.SERVER_CAMERA_AUDIO_DEVICE ?? 'default');
     }
     args.push(
       '-map', '0:v:0', '-map', '1:a:0?',
@@ -60,7 +62,7 @@ class ServerCamera {
       '-g', process.env.CAMERA_FPS ?? '60', '-keyint_min', process.env.CAMERA_FPS ?? '60', '-sc_threshold', '0',
       '-b:v', process.env.CAMERA_VIDEO_BITRATE ?? '8M', '-maxrate', process.env.CAMERA_VIDEO_MAXRATE ?? '10M',
       '-bufsize', process.env.CAMERA_VIDEO_BUFSIZE ?? '2M', '-threads', '0',
-      '-c:a', 'libopus', '-b:a', process.env.CAMERA_AUDIO_BITRATE ?? '96k', '-application', 'lowdelay',
+      '-c:a', 'libopus', '-ac', '1', '-ar', '48000', '-b:a', process.env.CAMERA_AUDIO_BITRATE ?? '96k', '-application', 'lowdelay',
       '-f', 'rtsp', '-rtsp_transport', 'tcp', process.env.MEDIA_MTX_RTSP_URL ?? 'rtsp://127.0.0.1:8554/server',
     );
 
