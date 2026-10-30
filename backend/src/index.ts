@@ -481,5 +481,13 @@ server.listen(port, () => {
   serverCamera.start();
 });
 
-process.on('SIGTERM', () => serverCamera.stop());
-process.on('SIGINT', () => serverCamera.stop());
+function shutdown() {
+  serverCamera.stop();
+  io.close(() => {
+    server.close(() => process.exit(0));
+  });
+  setTimeout(() => process.exit(1), 5000).unref();
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

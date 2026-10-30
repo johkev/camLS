@@ -25,6 +25,8 @@ Environment=CAMERA_AUDIO_BITRATE=96k
 ExecStart=/usr/bin/node /opt/lensmann-camera/backend/dist/index.js
 Restart=always
 RestartSec=5
+TimeoutStopSec=10
+KillMode=control-group
 
 [Install]
 WantedBy=multi-user.target
