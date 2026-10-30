@@ -1123,9 +1123,11 @@ function LoginGate({ children }: { children: ReactNode }) {
         <p className="muted-text">Skriv inn PIN-koden for å se kameraet.</p>
         <input
           className="login-pin"
-          type="password"
+          type="text"
           inputMode="numeric"
           maxLength={4}
+          name="pin-code"
+          autoComplete="off"
           value={pin}
           onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
           autoFocus
