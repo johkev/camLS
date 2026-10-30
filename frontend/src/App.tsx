@@ -136,9 +136,19 @@ function ServerCameraPreview({ large = false }: { large?: boolean }) {
 
     const waitForCandidates = (connection: RTCPeerConnection) => new Promise<void>((resolve) => {
       if (connection.iceGatheringState === 'complete') return resolve();
-      connection.addEventListener('icegatheringstatechange', () => {
-        if (connection.iceGatheringState === 'complete') resolve();
-      }, { once: true });
+
+      const onGatheringStateChange = () => {
+        if (connection.iceGatheringState === 'complete') finish();
+      };
+
+      const finish = () => {
+        window.clearTimeout(timeout);
+        connection.removeEventListener('icegatheringstatechange', onGatheringStateChange);
+        resolve();
+      };
+
+      const timeout = window.setTimeout(finish, 1500);
+      connection.addEventListener('icegatheringstatechange', onGatheringStateChange);
     });
 
     const connect = async () => {
