@@ -9,6 +9,12 @@ WorkingDirectory=/opt/lensmann-camera
 Environment=NODE_ENV=production
 Environment=PORT=3001
 Environment=CAMERA_PUBLIC_BASE_URL=https://cam.lensmann.studio
+Environment=SERVER_CAMERA_ENABLED=true
+Environment=SERVER_CAMERA_DEVICE=/dev/video0
+Environment=CAMERA_WIDTH=1920
+Environment=CAMERA_HEIGHT=1080
+Environment=CAMERA_FPS=30
+Environment=CAMERA_JPEG_QUALITY=2
 ExecStart=/usr/bin/node /opt/lensmann-camera/backend/dist/index.js
 Restart=always
 RestartSec=5

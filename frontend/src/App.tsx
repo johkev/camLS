@@ -86,6 +86,39 @@ function SiteFooter() {
   );
 }
 
+function ServerCameraPreview({ large = false }: { large?: boolean }) {
+  const [status, setStatus] = useState<'live' | 'offline' | 'disabled'>('offline');
+
+  useEffect(() => {
+    let active = true;
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`${backendServer}/api/health`, { cache: 'no-store' });
+        const data = (await response.json()) as { serverCamera?: 'live' | 'offline' | 'disabled' };
+        if (active) setStatus(data.serverCamera ?? 'offline');
+      } catch {
+        if (active) setStatus('offline');
+      }
+    };
+    checkStatus();
+    const timer = window.setInterval(checkStatus, 5000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
+
+  return (
+    <section className={`server-camera-panel ${large ? 'large' : ''}`}>
+      <div className="server-camera-heading">
+        <div><p className="eyebrow">SERVER USB-KAMERA</p><h2>Live fra serveren</h2></div>
+        <span className="status-row"><span className={`status-dot ${status === 'live' ? 'live' : 'offline'}`} />{status === 'live' ? 'LIVE' : status === 'disabled' ? 'DEAKTIVERT' : 'OFFLINE'}</span>
+      </div>
+      <div className="server-camera-frame">
+        {status === 'disabled' ? 'Serverkamera er deaktivert' : <img src={`${backendServer}/api/server-camera.mjpeg`} alt="Live video fra serverens USB-kamera" />}
+      </div>
+      {status !== 'live' && status !== 'disabled' && <p className="muted-text">Venter på kamera eller FFmpeg på serveren…</p>}
+    </section>
+  );
+}
+
 function HomePage() {
   const [cameras, setCameras] = useState<CameraInfo[]>(demoCameras);
   const socketRef = useRef<Socket | null>(null);
@@ -141,7 +174,7 @@ function HomePage() {
           <nav className="site-nav" aria-label="Primær navigasjon">
             <Link to="/">Hjem</Link>
             <Link to="/camera">Kamera</Link>
-            <Link className="btn btn-secondary" to="/watch/CAM-AB12CD">Se live</Link>
+            <Link className="btn btn-secondary" to="/watch/server">Serverkamera</Link>
           </nav>
         </div>
       </header>
@@ -156,6 +189,8 @@ function HomePage() {
             BRUK DENNE ENHETEN SOM KAMERA
           </Link>
         </header>
+
+        <ServerCameraPreview />
 
         <section className="camera-grid">
           {cameras.map((camera) => (
@@ -590,7 +625,7 @@ function CameraPage() {
           <nav className="site-nav" aria-label="Primær navigasjon">
             <Link to="/">Hjem</Link>
             <Link to="/camera">Kamera</Link>
-            <Link className="btn btn-secondary" to="/watch/CAM-AB12CD">Se live</Link>
+            <Link className="btn btn-secondary" to="/watch/server">Serverkamera</Link>
           </nav>
         </div>
       </header>
@@ -862,7 +897,7 @@ function ViewerPage() {
           <nav className="site-nav" aria-label="Primær navigasjon">
             <Link to="/">Hjem</Link>
             <Link to="/camera">Kamera</Link>
-            <Link className="btn btn-secondary" to={`/watch/${resolvedId}`}>Oppdater visning</Link>
+            <Link className="btn btn-secondary" to="/watch/server">Serverkamera</Link>
           </nav>
         </div>
       </header>
@@ -940,6 +975,18 @@ function ViewerPage() {
   );
 }
 
+function ServerCameraPage() {
+  return (
+    <>
+      <header className="site-header"><div className="nav-row"><Link className="logo" to="/"><img src="/favicon/favicon.svg" alt="Læns­mann Camera logo" className="logo-badge" /><span className="logo-text">Læns­mann Camera</span></Link><nav className="site-nav" aria-label="Primær navigasjon"><Link to="/">Hjem</Link><Link to="/camera">Kamera</Link></nav></div></header>
+      <main className="page-shell narrow viewer-shell">
+        <header className="header-bar compact"><div><p className="eyebrow">SERVERKAMERA</p><h1>LIVE FRA USB-KAMERA</h1></div><Link className="btn btn-ghost" to="/">TILBAKE</Link></header>
+        <ServerCameraPreview large />
+      </main>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -949,6 +996,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/camera" element={<CameraPage />} />
             <Route path="/watch" element={<ViewerPage />} />
+            <Route path="/watch/server" element={<ServerCameraPage />} />
             <Route path="/watch/:cameraId" element={<ViewerPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -1,5 +1,6 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { Server, Socket } from 'socket.io';
 
 const port = Number(process.env.PORT ?? 3001);
@@ -22,6 +23,105 @@ const cameraSocketIds = new Map<string, string>();
 const cameraSocketByCameraId = new Map<string, string>();
 const cameraIdsByDeviceKey = new Map<string, string>();
 const viewerSocketIds = new Map<string, Set<string>>();
+
+type MjpegClient = http.ServerResponse;
+
+class ServerCamera {
+  private process: ReturnType<typeof spawn> | null = null;
+  private clients = new Set<MjpegClient>();
+  private buffer = Buffer.alloc(0);
+  private restartTimer: NodeJS.Timeout | null = null;
+  private stopping = false;
+  private lastFrameAt = 0;
+
+  readonly enabled = process.env.SERVER_CAMERA_ENABLED !== 'false';
+
+  get status() {
+    if (!this.enabled) return 'disabled' as const;
+    if (this.lastFrameAt && Date.now() - this.lastFrameAt < 5000) return 'live' as const;
+    return 'offline' as const;
+  }
+
+  start() {
+    if (!this.enabled || this.process) return;
+    this.stopping = false;
+
+    const args = [
+      '-hide_banner', '-loglevel', 'warning',
+      '-f', process.env.CAMERA_INPUT_FORMAT ?? 'v4l2',
+      '-framerate', process.env.CAMERA_FPS ?? '30',
+      '-video_size', `${process.env.CAMERA_WIDTH ?? '1920'}x${process.env.CAMERA_HEIGHT ?? '1080'}`,
+    ];
+    const inputFormat = process.env.CAMERA_INPUT_PIXEL_FORMAT;
+    if (inputFormat) args.push('-input_format', inputFormat);
+    args.push('-i', process.env.SERVER_CAMERA_DEVICE ?? '/dev/video0', '-an', '-f', 'mjpeg', '-q:v', process.env.CAMERA_JPEG_QUALITY ?? '2', 'pipe:1');
+
+    const ffmpegPath = process.env.FFMPEG_PATH ?? 'ffmpeg';
+    console.log(`[server-camera] Starting ${ffmpegPath} ${args.join(' ')}`);
+    const child = spawn(ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    this.process = child;
+    this.buffer = Buffer.alloc(0);
+
+    child.stdout.on('data', (chunk: Buffer) => this.handleOutput(chunk));
+    child.stderr.on('data', (chunk: Buffer) => console.warn(`[server-camera] ${chunk.toString().trim()}`));
+    child.on('error', (error) => console.error('[server-camera] Could not start FFmpeg:', error.message));
+    child.on('close', (code, signal) => {
+      this.process = null;
+      this.lastFrameAt = 0;
+      this.closeClients();
+      if (!this.stopping) {
+        console.warn(`[server-camera] FFmpeg stopped (code=${code}, signal=${signal}); retrying in 5 seconds`);
+        this.restartTimer = setTimeout(() => this.start(), 5000);
+      }
+    });
+  }
+
+  addClient(response: MjpegClient) {
+    response.writeHead(200, {
+      'Content-Type': 'multipart/x-mixed-replace; boundary=frame',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Connection: 'close',
+    });
+    this.clients.add(response);
+    response.on('close', () => this.clients.delete(response));
+    if (!this.process) this.start();
+  }
+
+  stop() {
+    this.stopping = true;
+    if (this.restartTimer) clearTimeout(this.restartTimer);
+    this.closeClients();
+    this.process?.kill('SIGTERM');
+    this.process = null;
+  }
+
+  private handleOutput(chunk: Buffer) {
+    this.buffer = Buffer.concat([this.buffer, chunk]);
+    while (true) {
+      const start = this.buffer.indexOf(Buffer.from([0xff, 0xd8]));
+      const end = this.buffer.indexOf(Buffer.from([0xff, 0xd9]), start + 2);
+      if (start < 0 || end < 0) {
+        if (this.buffer.length > 4 * 1024 * 1024) this.buffer = this.buffer.subarray(-2);
+        return;
+      }
+      const frame = this.buffer.subarray(start, end + 2);
+      this.buffer = this.buffer.subarray(end + 2);
+      this.lastFrameAt = Date.now();
+      const header = Buffer.from(`--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.length}\r\n\r\n`);
+      for (const client of this.clients) {
+        if (!client.destroyed) client.write(Buffer.concat([header, frame, Buffer.from('\r\n')]));
+      }
+    }
+  }
+
+  private closeClients() {
+    for (const client of this.clients) client.end();
+    this.clients.clear();
+  }
+}
+
+const serverCamera = new ServerCamera();
 
 function getPublicBaseUrl() {
   const configuredUrl = process.env.CAMERA_PUBLIC_BASE_URL?.trim();
@@ -48,8 +148,14 @@ const server = http.createServer((req, res) => {
         phase: 'backend-signaling',
         timestamp: new Date().toISOString(),
         cameraCount: cameras.size,
+        serverCamera: serverCamera.status,
       }),
     );
+    return;
+  }
+
+  if (req.url?.startsWith('/api/server-camera.mjpeg')) {
+    serverCamera.addClient(res);
     return;
   }
 
@@ -410,4 +516,8 @@ io.on('connection', (socket) => {
 
 server.listen(port, () => {
   console.log(`[${new Date().toISOString()}] Backend listening on http://localhost:${port}`);
+  serverCamera.start();
 });
+
+process.on('SIGTERM', () => serverCamera.stop());
+process.on('SIGINT', () => serverCamera.stop());

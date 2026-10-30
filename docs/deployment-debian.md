@@ -6,7 +6,7 @@ The deployment hostname is `cam.lensmann.studio`.
 
 ```bash
 sudo apt update
-sudo apt install -y apache2 ca-certificates curl git
+sudo apt install -y apache2 ca-certificates curl git ffmpeg v4l-utils
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
@@ -15,6 +15,7 @@ sudo apt install -y nodejs
 
 ```bash
 sudo useradd --system --create-home --shell /usr/sbin/nologin camls
+sudo usermod -aG video camls
 sudo mkdir -p /opt/lensmann-camera
 sudo chown -R camls:camls /opt/lensmann-camera
 sudo -u camls git clone https://github.com/johkev/camLS.git /opt/lensmann-camera
@@ -34,6 +35,12 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now lensmann-camera
 sudo systemctl status lensmann-camera
 ```
+
+The backend captures the server USB camera directly with FFmpeg. It defaults to
+`/dev/video0`, 1920x1080 at 30 FPS, and publishes an MJPEG stream at
+`/api/server-camera.mjpeg`. If the camera uses another device, set
+`SERVER_CAMERA_DEVICE` in the systemd service. Use `v4l2-ctl --list-devices` to
+find the correct device name. Restart the service after changing these values.
 
 ## 4. Apache
 
