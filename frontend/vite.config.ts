@@ -12,6 +12,7 @@ export default defineConfig({
         target: 'http://localhost:3001',
         ws: true,
       },
+      '/live': 'http://localhost:8889',
     },
   },
   preview: {
@@ -23,6 +24,7 @@ export default defineConfig({
         target: 'http://localhost:3001',
         ws: true,
       },
+      '/live': 'http://localhost:8889',
     },
   },
 });

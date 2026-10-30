@@ -43,6 +43,12 @@ const backendServer = (() => {
   return window.location.origin;
 })();
 
+const mediaServer = (() => {
+  const configuredUrl = import.meta.env.VITE_MEDIA_SERVER_URL;
+  if (configuredUrl) return configuredUrl.replace(/\/+$/, '');
+  return `${window.location.origin}/live`;
+})();
+
 const getDeviceKey = () => {
   const storageKey = 'camls-device-key';
   const existingKey = window.localStorage.getItem(storageKey);
@@ -88,6 +94,10 @@ function SiteFooter() {
 
 function ServerCameraPreview({ large = false }: { large?: boolean }) {
   const [status, setStatus] = useState<'live' | 'offline' | 'disabled'>('offline');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -105,6 +115,85 @@ function ServerCameraPreview({ large = false }: { large?: boolean }) {
     return () => { active = false; window.clearInterval(timer); };
   }, []);
 
+  useEffect(() => {
+    if (!videoRef.current || !remoteStream) return;
+    videoRef.current.srcObject = remoteStream;
+    videoRef.current.play().catch(() => undefined);
+  }, [remoteStream, isMuted]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let peerConnection: RTCPeerConnection | null = null;
+    let sessionUrl = '';
+    let retryTimer: number | undefined;
+
+    const closeConnection = () => {
+      peerConnection?.close();
+      peerConnection = null;
+      if (sessionUrl) fetch(sessionUrl, { method: 'DELETE' }).catch(() => undefined);
+      sessionUrl = '';
+    };
+
+    const waitForCandidates = (connection: RTCPeerConnection) => new Promise<void>((resolve) => {
+      if (connection.iceGatheringState === 'complete') return resolve();
+      connection.addEventListener('icegatheringstatechange', () => {
+        if (connection.iceGatheringState === 'complete') resolve();
+      }, { once: true });
+    });
+
+    const connect = async () => {
+      closeConnection();
+      setConnectionStatus('connecting');
+      try {
+        const connection = new RTCPeerConnection();
+        peerConnection = connection;
+        connection.addTransceiver('video', { direction: 'recvonly' });
+        connection.addTransceiver('audio', { direction: 'recvonly' });
+        connection.ontrack = (event) => {
+          if (!cancelled && event.streams[0]) setRemoteStream(event.streams[0]);
+        };
+        connection.onconnectionstatechange = () => {
+          if (cancelled) return;
+          if (connection.connectionState === 'connected') setConnectionStatus('connected');
+          if (connection.connectionState === 'failed' || connection.connectionState === 'disconnected') {
+            setConnectionStatus('offline');
+            retryTimer = window.setTimeout(connect, 2000);
+          }
+        };
+
+        const offer = await connection.createOffer();
+        await connection.setLocalDescription(offer);
+        await waitForCandidates(connection);
+        const response = await fetch(`${mediaServer}/server/whep`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/sdp' },
+          body: connection.localDescription?.sdp,
+        });
+        if (!response.ok) throw new Error(`WebRTC-signalisering feilet (${response.status})`);
+        const location = response.headers.get('location');
+        if (location) {
+          sessionUrl = /^https?:\/\//i.test(location)
+            ? location
+            : `${mediaServer}${location.startsWith('/') ? location : `/${location}`}`;
+        }
+        await connection.setRemoteDescription({ type: 'answer', sdp: await response.text() });
+      } catch (error) {
+        console.warn('Kunne ikke koble til serverkamera:', error);
+        if (!cancelled) {
+          setConnectionStatus('offline');
+          retryTimer = window.setTimeout(connect, 2000);
+        }
+      }
+    };
+
+    connect();
+    return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      closeConnection();
+    };
+  }, []);
+
   return (
     <section className={`server-camera-panel ${large ? 'large' : ''}`}>
       <div className="server-camera-heading">
@@ -112,9 +201,13 @@ function ServerCameraPreview({ large = false }: { large?: boolean }) {
         <span className="status-row"><span className={`status-dot ${status === 'live' ? 'live' : 'offline'}`} />{status === 'live' ? 'LIVE' : status === 'disabled' ? 'DEAKTIVERT' : 'OFFLINE'}</span>
       </div>
       <div className="server-camera-frame">
-        {status === 'disabled' ? 'Serverkamera er deaktivert' : <img src={`${backendServer}/api/server-camera.mjpeg`} alt="Live video fra serverens USB-kamera" />}
+        {status === 'disabled' ? 'Serverkamera er deaktivert' : <video ref={videoRef} autoPlay playsInline muted={isMuted} controls={large} className="live-video" />}
       </div>
-      {status !== 'live' && status !== 'disabled' && <p className="muted-text">Venter på kamera eller FFmpeg på serveren…</p>}
+      <div className="server-camera-controls">
+        <span className="muted-text">WebRTC: {connectionStatus === 'connected' ? 'tilkoblet' : connectionStatus === 'connecting' ? 'kobler til' : 'prøver på nytt'}</span>
+        {large && <button className="btn btn-ghost" onClick={() => setIsMuted((value) => !value)}>{isMuted ? 'SLÅ PÅ LYD' : 'SLÅ AV LYD'}</button>}
+      </div>
+      {status !== 'live' && status !== 'disabled' && <p className="muted-text">Venter på kamera, lydinngang eller FFmpeg på serveren…</p>}
     </section>
   );
 }

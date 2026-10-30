@@ -1,0 +1,27 @@
+logLevel: warn
+
+# FFmpeg publishes locally; do not expose RTSP to the network.
+rtsp: true
+rtspTransports: [tcp]
+rtspAddress: 127.0.0.1:8554
+
+# Apache proxies the WHEP signalling endpoint at /live/.
+webrtc: true
+webrtcAddress: 127.0.0.1:8889
+webrtcAllowOrigins: ["https://cam.lensmann.studio"]
+webrtcTrustedProxies: [127.0.0.1]
+
+# This is the actual real-time media transport. Forward UDP 8189 from the router
+# to this host and keep webrtc.cam.lensmann.studio DNS-only in Cloudflare.
+webrtcLocalUDPAddress: :8189
+webrtcAdditionalHosts: [webrtc.cam.lensmann.studio]
+
+# Unused protocols are disabled to keep the server surface small.
+rtmp: false
+hls: false
+srt: false
+moq: false
+
+paths:
+  server:
+    source: publisher

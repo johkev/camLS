@@ -601,11 +601,20 @@ select:focus {
   color: var(--muted);
 }
 
-.server-camera-frame img {
+.server-camera-frame img,
+.server-camera-frame video {
   display: block;
   width: 100%;
   max-height: 72vh;
   object-fit: contain;
+}
+
+.server-camera-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
 }
 
 @media (max-width: 640px) {

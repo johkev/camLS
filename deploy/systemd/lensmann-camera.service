@@ -1,6 +1,7 @@
 [Unit]
 Description=Lansmann Camera signaling backend
-After=network.target
+After=network.target mediamtx.service
+Requires=mediamtx.service
 
 [Service]
 Type=simple
@@ -11,10 +12,16 @@ Environment=PORT=3001
 Environment=CAMERA_PUBLIC_BASE_URL=https://cam.lensmann.studio
 Environment=SERVER_CAMERA_ENABLED=true
 Environment=SERVER_CAMERA_DEVICE=/dev/video0
-Environment=CAMERA_WIDTH=1920
-Environment=CAMERA_HEIGHT=1080
-Environment=CAMERA_FPS=30
-Environment=CAMERA_JPEG_QUALITY=2
+Environment=CAMERA_WIDTH=1280
+Environment=CAMERA_HEIGHT=720
+Environment=CAMERA_FPS=60
+Environment=CAMERA_INPUT_PIXEL_FORMAT=mjpeg
+Environment=SERVER_CAMERA_AUDIO_ENABLED=true
+Environment=SERVER_CAMERA_AUDIO_DEVICE=hw:1,0
+Environment=CAMERA_VIDEO_BITRATE=8M
+Environment=CAMERA_VIDEO_MAXRATE=10M
+Environment=CAMERA_VIDEO_BUFSIZE=2M
+Environment=CAMERA_AUDIO_BITRATE=96k
 ExecStart=/usr/bin/node /opt/lensmann-camera/backend/dist/index.js
 Restart=always
 RestartSec=5
