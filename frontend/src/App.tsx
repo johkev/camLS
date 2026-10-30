@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { io, type Socket } from 'socket.io-client';
@@ -1090,22 +1090,79 @@ function ServerCameraPage() {
   );
 }
 
+function LoginGate({ children }: { children: ReactNode }) {
+  const [authenticated, setAuthenticated] = useState(() => localStorage.getItem('camls-authenticated') === 'true');
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState(false);
+
+  const pressKey = (key: string) => {
+    if (pin.length < 4) {
+      setPin((current) => current + key);
+      setError(false);
+    }
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (pin === '1706') {
+      localStorage.setItem('camls-authenticated', 'true');
+      setAuthenticated(true);
+      return;
+    }
+    setPin('');
+    setError(true);
+  };
+
+  if (authenticated) return <>{children}</>;
+
+  return (
+    <main className="login-screen">
+      <form className="login-card" onSubmit={submit}>
+        <p className="eyebrow">LÆNSMANN CAMERA</p>
+        <h1>Logg inn</h1>
+        <p className="muted-text">Skriv inn PIN-koden for å se kameraet.</p>
+        <input
+          className="login-pin"
+          type="password"
+          inputMode="numeric"
+          maxLength={4}
+          value={pin}
+          onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+          autoFocus
+          aria-label="PIN-kode"
+        />
+        <div className="keypad">
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((key) => (
+            <button type="button" key={key} onClick={() => pressKey(key)}>{key}</button>
+          ))}
+          <button type="button" onClick={() => setPin('')}>C</button>
+          <button type="button" onClick={() => pressKey('0')}>0</button>
+          <button type="submit">OK</button>
+        </div>
+        {error && <p className="login-error">Feil PIN-kode</p>}
+      </form>
+    </main>
+  );
+}
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <div className="app-frame">
-        <div className="app-content">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/camera" element={<CameraPage />} />
-            <Route path="/watch" element={<ViewerPage />} />
-            <Route path="/watch/server" element={<ServerCameraPage />} />
-            <Route path="/watch/:cameraId" element={<ViewerPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+    <LoginGate>
+      <BrowserRouter>
+        <div className="app-frame">
+          <div className="app-content">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/camera" element={<CameraPage />} />
+              <Route path="/watch" element={<ViewerPage />} />
+              <Route path="/watch/server" element={<ServerCameraPage />} />
+              <Route path="/watch/:cameraId" element={<ViewerPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+          <SiteFooter />
         </div>
-        <SiteFooter />
-      </div>
-    </BrowserRouter>
+      </BrowserRouter>
+    </LoginGate>
   );
 }
