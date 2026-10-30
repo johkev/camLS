@@ -1,9 +1,12 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { Server, Socket } from 'socket.io';
 
 const port = Number(process.env.PORT ?? 3001);
+const recordingsDirectory = process.env.RECORDINGS_DIRECTORY ?? '/mnt/media2/Lænsmann Studio/cam';
 
 interface CameraRecord {
   id: string;
@@ -101,7 +104,7 @@ function getPublicBaseUrl() {
   return 'https://cam.lensmann.studio';
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   if (req.method !== 'GET') {
     res.writeHead(405, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Method not allowed' }));
@@ -129,6 +132,29 @@ const server = http.createServer((req, res) => {
       .map((camera) => ({ ...camera }));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(cameraList));
+    return;
+  }
+
+  if (req.url === '/api/recordings') {
+    try {
+      const entries = await fs.readdir(recordingsDirectory, { withFileTypes: true });
+      const recordings = await Promise.all(
+        entries
+          .filter((entry) => entry.isFile() && entry.name.endsWith('.mp4'))
+          .map(async (entry) => {
+            const filePath = path.join(recordingsDirectory, entry.name);
+            const file = await fs.stat(filePath);
+            return { name: entry.name, size: file.size, modifiedAt: file.mtime.toISOString() };
+          }),
+      );
+      recordings.sort((left, right) => right.modifiedAt.localeCompare(left.modifiedAt));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(recordings));
+    } catch (error) {
+      console.error('[recordings] Could not list recordings:', error);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('[]');
+    }
     return;
   }
 

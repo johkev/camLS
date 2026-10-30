@@ -22,6 +22,7 @@ Environment=CAMERA_VIDEO_BITRATE=8M
 Environment=CAMERA_VIDEO_MAXRATE=10M
 Environment=CAMERA_VIDEO_BUFSIZE=2M
 Environment=CAMERA_AUDIO_BITRATE=96k
+Environment="RECORDINGS_DIRECTORY=/mnt/media2/Lænsmann Studio/cam"
 ExecStart=/usr/bin/node /opt/lensmann-camera/backend/dist/index.js
 Restart=always
 RestartSec=5

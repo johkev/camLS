@@ -85,7 +85,27 @@ proxy does not forward WebRTC UDP media. Camera access from iPhone requires HTTP
 After HTTPS is active, update the Apache virtual host to `*:443` with the certificate
 paths and redirect port 80 to HTTPS.
 
-## 7. Logs and updates
+## 7. 24 hour recordings
+
+The recording service creates ten-minute MP4 files in
+`/mnt/media2/Lænsmann Studio/cam`. The cleanup timer removes files older than 24
+hours. Install and start the services with:
+
+```bash
+sudo mkdir -p "/mnt/media2/Lænsmann Studio/cam"
+sudo chown -R camls:camls "/mnt/media2/Lænsmann Studio/cam"
+sudo cp deploy/systemd/lensmann-camera-recording.service /etc/systemd/system/
+sudo cp deploy/systemd/lensmann-camera-recording-cleanup.service /etc/systemd/system/
+sudo cp deploy/systemd/lensmann-camera-recording-cleanup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now lensmann-camera-recording lensmann-camera-recording-cleanup.timer
+```
+
+Add the `Alias /recordings/` and matching `<Directory>` block from
+`deploy/apache/lensmann-camera.conf` to the HTTPS Apache virtual host too, then
+reload Apache. The server camera page lists and plays the available recordings.
+
+## 8. Logs and updates
 
 ```bash
 sudo journalctl -u lensmann-camera -f

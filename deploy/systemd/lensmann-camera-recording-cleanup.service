@@ -1,0 +1,7 @@
+[Unit]
+Description=Delete camera recordings older than 24 hours
+
+[Service]
+Type=oneshot
+User=camls
+ExecStart=/usr/bin/find "/mnt/media2/Lænsmann Studio/cam" -type f -name '*.mp4' -mmin +1440 -delete

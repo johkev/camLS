@@ -108,6 +108,42 @@ body {
   color: #ff927e;
 }
 
+.recordings-panel {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-md);
+  background: rgba(22, 32, 29, 0.72);
+}
+
+.recordings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.recordings-heading h2 {
+  margin: 4px 0 0;
+}
+
+.recordings-panel select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  background: #0b110f;
+  color: var(--text-light);
+}
+
+.recording-video {
+  width: 100%;
+  margin-top: 16px;
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+
 button,
 input,
 select {

@@ -16,6 +16,12 @@ type CameraInfo = {
   quality?: string;
 };
 
+type RecordingInfo = {
+  name: string;
+  size: number;
+  modifiedAt: string;
+};
+
 const demoCameras: CameraInfo[] = [
   { id: 'CAM-AB12CD', name: 'Garasje', type: 'browser', status: 'live', createdAt: '', lastSeen: '', viewerCount: 2 },
   { id: 'CAM-7721FF', name: 'Soverom', type: 'browser', status: 'live', createdAt: '', lastSeen: '', viewerCount: 1 },
@@ -97,6 +103,8 @@ function ServerCameraPreview({ large = false }: { large?: boolean }) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const [recordings, setRecordings] = useState<RecordingInfo[]>([]);
+  const [selectedRecording, setSelectedRecording] = useState('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -112,6 +120,27 @@ function ServerCameraPreview({ large = false }: { large?: boolean }) {
     };
     checkStatus();
     const timer = window.setInterval(checkStatus, 5000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadRecordings = async () => {
+      try {
+        const response = await fetch(`${backendServer}/api/recordings`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = (await response.json()) as RecordingInfo[];
+        if (!active) return;
+        setRecordings(data);
+        setSelectedRecording((current) => current && data.some((recording) => recording.name === current)
+          ? current
+          : data[0]?.name ?? '');
+      } catch {
+        if (active) setRecordings([]);
+      }
+    };
+    loadRecordings();
+    const timer = window.setInterval(loadRecordings, 30000);
     return () => { active = false; window.clearInterval(timer); };
   }, []);
 
@@ -218,6 +247,23 @@ function ServerCameraPreview({ large = false }: { large?: boolean }) {
         {large && <button className="btn btn-ghost" onClick={() => setIsMuted((value) => !value)}>{isMuted ? 'SLÅ PÅ LYD' : 'SLÅ AV LYD'}</button>}
       </div>
       {status !== 'live' && status !== 'disabled' && <p className="muted-text">Venter på kamera, lydinngang eller FFmpeg på serveren…</p>}
+      {large && <section className="recordings-panel">
+        <div className="recordings-heading">
+          <div><p className="eyebrow">OPPTAK</p><h2>Siste 24 timer</h2></div>
+          <span className="muted-text">{recordings.length} filer</span>
+        </div>
+        {selectedRecording ? <>
+          <select value={selectedRecording} onChange={(event) => setSelectedRecording(event.target.value)}>
+            {recordings.map((recording) => <option key={recording.name} value={recording.name}>{recording.name.replace('camera-', '').replace('.mp4', '')}</option>)}
+          </select>
+          <video
+            className="recording-video"
+            controls
+            preload="metadata"
+            src={`${window.location.origin}/recordings/${encodeURIComponent(selectedRecording)}`}
+          />
+        </> : <p className="muted-text">Ingen opptak tilgjengelig ennå.</p>}
+      </section>}
     </section>
   );
 }
